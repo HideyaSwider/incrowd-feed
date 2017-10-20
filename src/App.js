@@ -10,7 +10,8 @@ class App extends Component {
     isLoading: true,
     limit: step,
     offset: 0,
-    feed: []
+    feed: [],
+    noMore: false
   }
 
   componentWillMount = () => {
@@ -28,8 +29,15 @@ class App extends Component {
   }
 
   moveForward = newFeed => {
-    //check if there are no more posts and stop loading
-    this.setState({ offset: this.state.offset + step, feed: this.state.feed.concat(newFeed), isLoading: false })
+    let { feed, offset } = this.state
+    if (newFeed.length === 0) {
+      window.removeEventListener('scroll', this.handleScroll)
+      this.setState({ noMore: true, isLoading: false })
+    }
+    this.setState({ offset: offset + step, feed: feed.concat(newFeed) })
+    setTimeout(() => {
+      this.setState({ isLoading: false })
+    }, 1000)
   }
 
   componentDidMount = () => {
@@ -41,18 +49,20 @@ class App extends Component {
   }
 
   handleScroll = event => {
-    const windowHeight = 'innerHeight' in window ? window.innerHeight : document.documentElement.offsetHeight
-    const body = document.body
-    const html = document.documentElement
-    const docHeight = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight)
-    const windowBottom = windowHeight + window.pageYOffset
-    if (windowBottom >= docHeight) {
-      this.loadMore()
+    if (!this.state.noMore) {
+      const windowHeight = 'innerHeight' in window ? window.innerHeight : document.documentElement.offsetHeight
+      const body = document.body
+      const html = document.documentElement
+      const docHeight = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight)
+      const windowBottom = windowHeight + window.pageYOffset
+      if (windowBottom >= docHeight && this.state.isLoading === false) {
+        this.loadMore()
+      }
     }
   }
 
   render() {
-    const { isLoading, feed } = this.state
+    const { isLoading, feed, noMore } = this.state
     const posts = feed.map(post => {
       return <Post {...post} key={post.published} />
     })
@@ -60,6 +70,7 @@ class App extends Component {
       <div id="app" className="App" onScroll={this.listenToScroll}>
         <div className="posts">{posts}</div>
         {isLoading ? <img src={spin} className="loading" alt="loading" /> : null}
+        {noMore ? <p className="no-more">Whoopsies! We don't have any more articles for you!</p>: null}
       </div>
     )
   }
